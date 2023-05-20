@@ -1,0 +1,45 @@
+# Given public GitHub repos as input (comma separated), Use trivy to scan packages in the repos in parallel.
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: trivy-scan-repo-
+spec:
+  entrypoint: trivy-scan-git-repositories
+  arguments:
+    parameters:
+    - name: repos                                     # comma separated git repositories
+      value: |
+          "https://github.com/knqyf263/trivy-ci-test,https://github.com/Sukhda/food-delivery"
+
+  templates:
+  - name: trivy-scan-git-repositories
+    inputs:
+      parameters:
+      - name: repos 
+    steps:
+    - - name: generate-repo-list        # generate repo list from repo string
+        template: generate-repo-list
+
+    - - name: scan-individual-repo       # scan individual repo
+        template: scan-individual-repo
+        arguments:
+          parameters:
+          - name: gitRepo
+            value: "{{item}}"
+        withParam: "{{steps.generate-repo-list.outputs.result}}"
+
+  - name: generate-repo-list      # split repo string to list of git repo
+    container:
+      image: python:3.7
+      command: [python]
+      args: ["-c", "import json; import sys; json.dump({{workflow.parameters.repos}}.split(','), sys.stdout)"]
+
+  - name: scan-individual-repo
+    inputs:
+      parameters:
+      - name: gitRepo       # parameter declaration
+    container:
+      # run trivy with that message input parameter as args
+      image: aquasec/trivy
+      command: [trivy]
+      args: ["repo", "{{inputs.parameters.gitRepo}}"]

@@ -1,0 +1,23 @@
+# Given a public GitHub repo as input, use Use trivy to scan packages in the repo.
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: scan-trivy-params-
+spec:
+  entrypoint: scan-trivy
+  arguments:
+    parameters:
+    - name: gitRepo
+      value: https://github.com/knqyf263/trivy-ci-test      # default value
+
+  templates:  
+  - name: scan-trivy
+    inputs:
+      parameters:
+      - name: gitRepo       # parameter declaration
+    container:
+      # run docker with that message input parameter as args
+      image: aquasec/trivy
+      command: [trivy]
+      args: ["repo", "{{inputs.parameters.gitRepo}}"]
+
